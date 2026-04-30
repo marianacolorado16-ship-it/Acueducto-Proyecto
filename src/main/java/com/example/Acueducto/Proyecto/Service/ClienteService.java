@@ -71,7 +71,6 @@ public class ClienteService {
 
         validarDuplicados(id, request);
 
-        // Actualización segura: solo actualiza si el campo no es nulo en el request
         if (request.getCodigoCliente() != null) cliente.setCodigoCliente(request.getCodigoCliente().trim());
         if (request.getDocumento() != null) cliente.setDocumento(request.getDocumento().trim());
         if (request.getNombres() != null) cliente.setNombres(request.getNombres().trim());
@@ -104,7 +103,7 @@ public class ClienteService {
     }
 
     private void validarDuplicados(Long idActual, Cliente request) {
-        // Se agregan validaciones de nulidad antes de usar .trim() para evitar NullPointerException
+
         if (request.getCodigoCliente() != null && !request.getCodigoCliente().isBlank()) {
             clienteRepository.findByCodigoCliente(request.getCodigoCliente().trim())
                     .filter(c -> idActual == null || !c.getId().equals(idActual))

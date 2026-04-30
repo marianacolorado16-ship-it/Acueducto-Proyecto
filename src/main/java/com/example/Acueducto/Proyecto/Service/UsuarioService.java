@@ -1,6 +1,8 @@
 package com.example.Acueducto.Proyecto.Service;
 
+import com.example.Acueducto.Proyecto.Model.Rol;
 import com.example.Acueducto.Proyecto.Model.Usuario;
+import com.example.Acueducto.Proyecto.Repository.RolRepository;
 import com.example.Acueducto.Proyecto.Repository.UsuarioRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -17,9 +19,11 @@ import java.util.List;
 public class UsuarioService {
     
     private final UsuarioRepository usuarioRepository;
+    private final RolRepository rolRepository;
 
-    public UsuarioService(UsuarioRepository usuarioRepository) {
+    public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository) {
         this.usuarioRepository = usuarioRepository;
+        this.rolRepository = rolRepository;
     }
 
     @Transactional(readOnly = true)
@@ -47,6 +51,34 @@ public class UsuarioService {
         return usuarioRepository.findAll(spec, pageable);
     }
 
+    public Usuario crearUsuario(Usuario usuario) {
+        // Validaciones básicas de duplicados
+        if (usuario.getUsername() != null && usuarioRepository.existsByUsername(usuario.getUsername())) {
+            throw new RuntimeException("El nombre de usuario ya existe");
+        }
+        if (usuario.getEmail() != null && usuarioRepository.existsByEmail(usuario.getEmail())) {
+            throw new RuntimeException("El email ya está registrado");
+        }
+
+        // Cargar roles reales desde la base de datos usando solo el ID enviado en el JSON
+        if (usuario.getRoles() != null && !usuario.getRoles().isEmpty()) {
+            List<Rol> rolesRecibidos = new ArrayList<>(usuario.getRoles());
+            usuario.getRoles().clear();
+            for (Rol r : rolesRecibidos) {
+                if (r.getId() != null) {
+                    Rol rolPersistido = rolRepository.findById(r.getId())
+                            .orElseThrow(() -> new RuntimeException("Rol no encontrado con ID: " + r.getId()));
+                    usuario.addRol(rolPersistido);
+                }
+            }
+        }
+
+        if (usuario.getEstado() == null) {
+            usuario.setEstado("ACTIVO");
+        }
+        return usuarioRepository.save(usuario);
+    }
+
     @Transactional(readOnly = true)
     public Usuario obtenerPorId(Long id) {
         return usuarioRepository.findById(id)
@@ -68,9 +100,21 @@ public class UsuarioService {
         if (request.getEstado() != null && !request.getEstado().isBlank()) {
             usuario.setEstado(request.getEstado().trim().toUpperCase());
         }
-        
-        // En un escenario real, aquí se podrían actualizar nombres, apellidos, etc.
-        // si el modelo Usuario los contiene.
+
+        // Actualización de roles (permitiendo enviar solo los IDs en el JSON)
+        if (request.getRoles() != null) {
+            // Limpiamos los roles actuales y añadimos los nuevos basados en los IDs recibidos
+            usuario.getRoles().clear();
+            for (Rol r : request.getRoles()) {
+                if (r.getId() != null) {
+                    Rol rolPersistido = rolRepository.findById(r.getId())
+                            .orElseThrow(() -> new RuntimeException("Rol no encontrado con ID: " + r.getId()));
+                    usuario.addRol(rolPersistido);
+                }
+            }
+        }
+
+        if (request.getUsername() != null) usuario.setUsername(request.getUsername().trim());
 
         return usuarioRepository.save(usuario);
     }

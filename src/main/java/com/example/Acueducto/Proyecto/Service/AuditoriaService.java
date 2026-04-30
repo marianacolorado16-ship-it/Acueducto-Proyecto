@@ -89,6 +89,35 @@ public class AuditoriaService {
             .findByTipoAndAccionOrderByFechaEventoDesc(tipo, accion, pageable);
     }
 
+    public Page<AuditoriaEvento> obtenerTodos(Pageable pageable) {
+        return auditoriaRepository.findAll(pageable);
+    }
+
+    public AuditoriaEvento crearEvento(AuditoriaEvento evento) {
+        return auditoriaRepository.save(evento);
+    }
+
+    public AuditoriaEvento obtenerPorId(Long id) {
+        return auditoriaRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Evento de auditoría no encontrado"));
+    }
+
+    public AuditoriaEvento actualizarEvento(Long id, AuditoriaEvento evento) {
+        AuditoriaEvento existente = obtenerPorId(id);
+        evento.setId(existente.getId());
+        if (evento.getFechaEvento() == null) {
+            evento.setFechaEvento(existente.getFechaEvento());
+        }
+        return auditoriaRepository.save(evento);
+    }
+
+    public void eliminarEvento(Long id) {
+        if (!auditoriaRepository.existsById(id)) {
+            throw new RuntimeException("Evento de auditoría no encontrado");
+        }
+        auditoriaRepository.deleteById(id);
+    }
+
     /**
      * Obtiene eventos en un rango de fechas
      */
